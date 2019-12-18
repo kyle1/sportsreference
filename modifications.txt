@@ -3,6 +3,7 @@ This file is for recording all modifications made from the main sportsreference 
 
 Modifications by date:
 ================================================================================
+2019-12-17  Added 1st half points and 2nd half points to NCAAB boxscore
 
 
 
@@ -10,3 +11,5 @@ Modifications by date:
 
 Modifications by module:
 ================================================================================
+NCAAB
+-Added 1st half points and 2nd half points to boxscore
