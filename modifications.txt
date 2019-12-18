@@ -1,0 +1,12 @@
+This file is for recording all modifications made from the main sportsreference codebase
+
+
+Modifications by date:
+================================================================================
+
+
+
+
+
+Modifications by module:
+================================================================================
