@@ -49,6 +49,7 @@ class BoxscorePlayer(AbstractPlayer):
         page. If the player appears in multiple tables, all of their
         information will appear in one single string concatenated together.
     """
+
     def __init__(self, player_id, player_name, player_data):
         self._index = 0
         self._player_id = player_id
@@ -134,6 +135,7 @@ class Boxscore:
         The relative link to the boxscore HTML page, such as
         '2017-11-10-21-kansas'.
     """
+
     def __init__(self, uri):
         self._uri = uri
         self._date = None
@@ -169,6 +171,8 @@ class Boxscore:
         self._away_blocks = None
         self._away_turnovers = None
         self._away_personal_fouls = None
+        self._away_points_1h = None
+        self._away_points_2h = None
         self._away_points = None
         self._away_true_shooting_percentage = None
         self._away_effective_field_goal_percentage = None
@@ -206,6 +210,8 @@ class Boxscore:
         self._home_blocks = None
         self._home_turnovers = None
         self._home_personal_fouls = None
+        self._home_points_1h = None
+        self._home_points_2h = None
         self._home_points = None
         self._home_true_shooting_percentage = None
         self._home_effective_field_goal_percentage = None
@@ -374,6 +380,80 @@ class Boxscore:
         records = boxscore(BOXSCORE_SCHEME[field]).items()
         records = [x.text() for x in records if x.text() != '']
         return records[index]
+
+    def _find_line_score_table(self, boxscore):
+        """
+        Find the table with line score information on the page.
+
+        Iterate through all tables on the page and see if any of them are
+        the line score table by checking if the ID is 'line-score'.
+
+        Parameters
+        ----------
+        boxscore : PyQuery object
+            A PyQuery object containing all of the HTML data from the boxscore.
+
+        Returns
+        -------
+        PyQuery object
+            Returns the PyQuery object that represents the line score table.
+        """
+        for table in boxscore('table').items():
+            try:
+                if table.attr['id'] == 'line-score':
+                    return table
+            except (KeyError, TypeError):
+                continue
+        return
+
+    def _parse_half_points(self, home_or_away, half, table):
+        """
+        Parse each team's 1st half points.
+
+        Find the line score table.
+
+        Parameters
+        ----------
+        field : string
+            The name of the attribute to parse.
+        boxscore : PyQuery object
+            A PyQuery object containing all of the HTML data from the boxscore.
+
+        Returns
+        -------
+        int
+            An int representing the team's 1st half points
+        """
+        # Line score table rows:
+        # Row 0, 1: Header & subheader
+        # Row 2: Away
+        # Row 3: Home
+
+        # Line score table cols:
+        # Col 0: Team Name
+        # Col 1: 1st Half
+        # Col 2: 2nd Half
+
+        # Line score table cols:
+        if home_or_away == 'away':
+            row_index = 2
+        else:
+            row_index = 3
+
+        col_index = half
+
+        i = 0
+        for row in table('tr').items():
+            # Find correct team row
+            if i == row_index:
+                # Find correct column (1st half or 2nd half)
+                j = 0
+                for td in row('td').items():
+                    if j == col_index:
+                        return td.text()
+                    j = j + 1
+            i = i + 1
+        return
 
     def _find_boxscore_tables(self, boxscore):
         """
@@ -593,6 +673,8 @@ class Boxscore:
         if not boxscore:
             return
 
+        line_score_table = self._find_line_score_table(boxscore)
+
         for field in self.__dict__:
             # Remove the '_' from the name
             short_field = str(field)[1:]
@@ -621,6 +703,22 @@ class Boxscore:
             if short_field == 'away_record' or \
                short_field == 'home_record':
                 value = self._parse_record(short_field, boxscore, index)
+                setattr(self, field, value)
+                continue
+            if short_field == 'away_points_1h':
+                value = self._parse_half_points('away', 1, line_score_table)
+                setattr(self, field, value)
+                continue
+            if short_field == 'away_points_2h':
+                value = self._parse_half_points('away', 2, line_score_table)
+                setattr(self, field, value)
+                continue
+            if short_field == 'home_points_1h':
+                value = self._parse_half_points('home', 1, line_score_table)
+                setattr(self, field, value)
+                continue
+            if short_field == 'home_points_2h':
+                value = self._parse_half_points('home', 2, line_score_table)
                 setattr(self, field, value)
                 continue
             value = utils._parse_field(BOXSCORE_SCHEME,
@@ -664,6 +762,8 @@ class Boxscore:
             self.away_offensive_rebound_percentage,
             'away_offensive_rebounds': self.away_offensive_rebounds,
             'away_personal_fouls': self.away_personal_fouls,
+            'away_points_1h': self.away_points_1h,
+            'away_points_2h': self.away_points_2h,
             'away_points': self.away_points,
             'away_ranking': self.away_ranking,
             'away_steal_percentage': self.away_steal_percentage,
@@ -714,6 +814,8 @@ class Boxscore:
             self.home_offensive_rebound_percentage,
             'home_offensive_rebounds': self.home_offensive_rebounds,
             'home_personal_fouls': self.home_personal_fouls,
+            'home_points_1h': self.home_points_1h,
+            'home_points_2h': self.home_points_2h,
             'home_points': self.home_points,
             'home_ranking': self.home_ranking,
             'home_steal_percentage': self.home_steal_percentage,
@@ -870,7 +972,7 @@ class Boxscore:
         """
         try:
             result = float(self.away_wins) / \
-                     float(self.away_wins + self.away_losses)
+                float(self.away_wins + self.away_losses)
             return round(result, 3)
         except ZeroDivisionError:
             return 0.0
@@ -1066,6 +1168,20 @@ class Boxscore:
         return self._away_personal_fouls
 
     @int_property_decorator
+    def away_points_1h(self):
+        """
+        Returns an ``int`` of the number of points the away team scored in 1st half.
+        """
+        return self._away_points_1h
+
+    @int_property_decorator
+    def away_points_2h(self):
+        """
+        Returns an ``int`` of the number of points the away team scored in 2nd half.
+        """
+        return self._away_points_2h
+
+    @int_property_decorator
     def away_points(self):
         """
         Returns an ``int`` of the number of points the away team scored.
@@ -1193,7 +1309,7 @@ class Boxscore:
         """
         try:
             result = float(self.home_wins) / \
-                     float(self.home_wins + self.home_losses)
+                float(self.home_wins + self.home_losses)
             return round(result, 3)
         except ZeroDivisionError:
             return 0.0
@@ -1395,6 +1511,20 @@ class Boxscore:
         """
         return self._home_points
 
+    @int_property_decorator
+    def home_points_1h(self):
+        """
+        Returns an ``int`` of the number of points the home team scored in 1st half.
+        """
+        return self._home_points_1h
+
+    @int_property_decorator
+    def home_points_2h(self):
+        """
+        Returns an ``int`` of the number of points the home team scored in 2nd half.
+        """
+        return self._home_points_2h
+
     @float_property_decorator
     def home_true_shooting_percentage(self):
         """
@@ -1523,6 +1653,7 @@ class Boxscores:
         empty, or if 'end_date' is prior to 'date', only the games from the day
         specified in the 'date' parameter will be saved.
     """
+
     def __init__(self, date, end_date=None):
         self._boxscores = {}
 
