@@ -408,7 +408,7 @@ class Boxscore:
 
     def _parse_half_points(self, home_or_away, half, table):
         """
-        Parse each team's 1st half points.
+        Parse each team's 1st or 2nd half points.
 
         Find the line score table.
 
@@ -422,7 +422,7 @@ class Boxscore:
         Returns
         -------
         int
-            An int representing the team's 1st half points
+            An int representing the team's 1st or 2nd half points
         """
         # Line score table rows:
         # Row 0, 1: Header & subheader
@@ -697,9 +697,6 @@ class Boxscore:
                 value = self._parse_ranking(short_field, boxscore)
                 setattr(self, field, value)
                 continue
-            index = 0
-            if short_field in BOXSCORE_ELEMENT_INDEX.keys():
-                index = BOXSCORE_ELEMENT_INDEX[short_field]
             if short_field == 'away_record' or \
                short_field == 'home_record':
                 value = self._parse_record(short_field, boxscore, index)
@@ -721,6 +718,9 @@ class Boxscore:
                 value = self._parse_half_points('home', 2, line_score_table)
                 setattr(self, field, value)
                 continue
+            index = 0
+            if short_field in BOXSCORE_ELEMENT_INDEX.keys():
+                index = BOXSCORE_ELEMENT_INDEX[short_field]
             value = utils._parse_field(BOXSCORE_SCHEME,
                                        boxscore,
                                        short_field,

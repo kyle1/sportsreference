@@ -3,13 +3,18 @@ This file is for recording all modifications made from the main sportsreference 
 
 Modifications by date:
 ================================================================================
-2019-12-17  Added 1st half points and 2nd half points to NCAAB boxscore
-
+2019-12-17  Added 1st half points and 2nd half points to NCAAB Boxscore
+2019-12-18  Added 1st, 2nd, 3rd and 4th quarter points to NBA Boxscore
+            Added player_id, player_name, and game_id to NBA Player Boxscore
 
 
 
 
 Modifications by module:
 ================================================================================
+NBA
+-Added 1st, 2nd, 3rd, and 4th quarter points to boxscore
+-Added player_id, player_name, and game_id to player boxscore
+
 NCAAB
 -Added 1st half points and 2nd half points to boxscore

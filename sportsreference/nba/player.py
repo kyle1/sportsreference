@@ -80,9 +80,11 @@ class AbstractPlayer:
         page. If the player appears in multiple tables, all of their
         information will appear in one single string concatenated together.
     """
-    def __init__(self, player_id, player_name, player_data):
+
+    def __init__(self, player_id, player_name, game_id, player_data):
         self._player_id = player_id
         self._name = player_name
+        self._game_id = game_id
         self._minutes_played = None
         self._field_goals = None
         self._field_goal_attempts = None
@@ -165,6 +167,7 @@ class AbstractPlayer:
         for field in self.__dict__:
             short_field = str(field)[1:]
             if short_field == 'player_id' or \
+               short_field == 'game_id' or \
                short_field == 'index' or \
                short_field == 'most_recent_season' or \
                short_field == 'contract' or \
@@ -202,6 +205,13 @@ class AbstractPlayer:
         Returns a ``string`` of the players name, such as 'James Harden'.
         """
         return self._name
+
+    @property
+    def game_id(self):
+        """
+        Return a ``string`` of the game ID (uri) on basketball-reference.
+        """
+        return self._game_id
 
     @_int_property_decorator
     def minutes_played(self):
