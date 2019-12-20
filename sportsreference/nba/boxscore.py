@@ -49,12 +49,14 @@ class BoxscorePlayer(AbstractPlayer):
         page. If the player appears in multiple tables, all of their
         information will appear in one single string concatenated together.
     """
-    def __init__(self, player_id, player_name, player_data):
+
+    def __init__(self, player_id, player_name, game_id, player_data):
         self._index = 0
         self._player_id = player_id
         self._defensive_rating = None
         self._offensive_rating = None
-        AbstractPlayer.__init__(self, player_id, player_name, player_data)
+        AbstractPlayer.__init__(
+            self, player_id, player_name, game_id, player_data)
 
     @property
     def dataframe(self):
@@ -63,6 +65,9 @@ class BoxscorePlayer(AbstractPlayer):
         properties and values for the specified game.
         """
         fields_to_include = {
+            'player_id': self.player_id,
+            'player_name': self.name,
+            'game_id': self.game_id,
             'assist_percentage': self.assist_percentage,
             'assists': self.assists,
             'block_percentage': self.block_percentage,
@@ -195,6 +200,7 @@ class Boxscore:
         The relative link to the boxscore HTML page, such as
         '201710310LAL'.
     """
+
     def __init__(self, uri):
         self._uri = uri
         self._date = None
@@ -226,6 +232,10 @@ class Boxscore:
         self._away_blocks = None
         self._away_turnovers = None
         self._away_personal_fouls = None
+        self._away_points_1q = None
+        self._away_points_2q = None
+        self._away_points_3q = None
+        self._away_points_4q = None
         self._away_points = None
         self._away_true_shooting_percentage = None
         self._away_effective_field_goal_percentage = None
@@ -259,6 +269,10 @@ class Boxscore:
         self._home_blocks = None
         self._home_turnovers = None
         self._home_personal_fouls = None
+        self._home_points_1q = None
+        self._home_points_2q = None
+        self._home_points_3q = None
+        self._home_points_4q = None
         self._home_points = None
         self._home_true_shooting_percentage = None
         self._home_effective_field_goal_percentage = None
@@ -354,6 +368,82 @@ class Boxscore:
         """
         scheme = BOXSCORE_SCHEME[field]
         return boxscore(scheme)
+
+    def _find_line_score_table(self, boxscore):
+        """
+        Find the table with line score information on the page.
+
+        Iterate through all tables on the page and see if any of them are
+        the line score table by checking if the ID is 'line-score'.
+
+        Parameters
+        ----------
+        boxscore : PyQuery object
+            A PyQuery object containing all of the HTML data from the boxscore.
+
+        Returns
+        -------
+        PyQuery object
+            Returns the PyQuery object that represents the line score table.
+        """
+        for table in boxscore('table').items():
+            try:
+                if table.attr['id'] == 'line_score':
+                    return table
+            except (KeyError, TypeError):
+                continue
+        return
+
+    def _parse_quarter_points(self, home_or_away, quarter, table):
+        """
+        Parse each team's 1st, 2nd, 3rd, or 4th quarter points.
+
+        Find the line score table.
+
+        Parameters
+        ----------
+        field : string
+            The name of the attribute to parse.
+        boxscore : PyQuery object
+            A PyQuery object containing all of the HTML data from the boxscore.
+
+        Returns
+        -------
+        int
+            An int representing the team's 1st, 2nd, 3rd, or 4th quarter points.
+        """
+        # Line score table rows:
+        # Row 0, 1: Header & subheader
+        # Row 2: Away
+        # Row 3: Home
+
+        # Line score table cols:
+        # Col 0: Team Name
+        # Col 1: 1st Quarter
+        # Col 2: 2nd Quarter
+        # Col 3: 3rd Quarter
+        # Col 4: 4th Quarter
+
+        # Line score table cols:
+        if home_or_away == 'away':
+            row_index = 2
+        else:
+            row_index = 3
+
+        col_index = quarter
+
+        i = 0
+        for row in table('tr').items():
+            # Find correct team row
+            if i == row_index:
+                # Find correct column (1st, 2nd, 3rd, or 4th quarter)
+                j = 0
+                for td in row('td').items():
+                    if j == col_index:
+                        return td.text()
+                    j = j + 1
+            i = i + 1
+        return
 
     def _find_boxscore_tables(self, boxscore):
         """
@@ -474,7 +564,7 @@ class Boxscore:
                 }
         return player_dict
 
-    def _instantiate_players(self, player_dict):
+    def _instantiate_players(self, game_id, player_dict):
         """
         Create a list of player instances for both the home and away teams.
 
@@ -503,6 +593,7 @@ class Boxscore:
         for player_id, details in player_dict.items():
             player = BoxscorePlayer(player_id,
                                     details['name'],
+                                    game_id,
                                     details['data'])
             if details['team'] == HOME:
                 home_players.append(player)
@@ -545,7 +636,8 @@ class Boxscore:
                                                      player_dict,
                                                      home_or_away)
             table_count += 1
-        away_players, home_players = self._instantiate_players(player_dict)
+        away_players, home_players = self._instantiate_players(
+            self._uri, player_dict)
         return away_players, home_players
 
     def _parse_game_data(self, uri):
@@ -573,6 +665,10 @@ class Boxscore:
         if not boxscore:
             return
 
+        line_score_table = self._find_line_score_table(boxscore)
+        quarter_points_fields = ['away_points_1q', 'away_points_2q', 'away_points_3q', 'away_points_4q',
+                                 'home_points_1q', 'home_points_2q', 'home_points_3q', 'home_points_4q']
+
         for field in self.__dict__:
             # Remove the '_' from the name
             short_field = str(field)[1:]
@@ -588,6 +684,14 @@ class Boxscore:
             if short_field == 'away_name' or \
                short_field == 'home_name':
                 value = self._parse_name(short_field, boxscore)
+                setattr(self, field, value)
+                continue
+            if short_field in quarter_points_fields:
+                field_info_split = short_field.split('_')
+                home_or_away = field_info_split[0]
+                quarter = int(field_info_split[2][0])
+                value = self._parse_quarter_points(
+                    home_or_away, quarter, line_score_table)
                 setattr(self, field, value)
                 continue
             index = 0
@@ -638,6 +742,10 @@ class Boxscore:
             self.away_offensive_rebound_percentage,
             'away_offensive_rebounds': self.away_offensive_rebounds,
             'away_personal_fouls': self.away_personal_fouls,
+            'away_points_1q': self.away_points_1q,
+            'away_points_2q': self.away_points_2q,
+            'away_points_3q': self.away_points_3q,
+            'away_points_4q': self.away_points_4q,
             'away_points': self.away_points,
             'away_steal_percentage': self.away_steal_percentage,
             'away_steals': self.away_steals,
@@ -686,6 +794,10 @@ class Boxscore:
             self.home_offensive_rebound_percentage,
             'home_offensive_rebounds': self.home_offensive_rebounds,
             'home_personal_fouls': self.home_personal_fouls,
+            'home_points_1q': self.home_points_1q,
+            'home_points_2q': self.home_points_2q,
+            'home_points_3q': self.home_points_3q,
+            'home_points_4q': self.home_points_4q,
             'home_points': self.home_points,
             'home_steal_percentage': self.home_steal_percentage,
             'home_steals': self.home_steals,
@@ -1002,6 +1114,38 @@ class Boxscore:
         return self._away_personal_fouls
 
     @int_property_decorator
+    def away_points_1q(self):
+        """
+        Returns an ``int`` of the number of points the away team scored in the
+        1st quarter.
+        """
+        return self._away_points_1q
+
+    @int_property_decorator
+    def away_points_2q(self):
+        """
+        Returns an ``int`` of the number of points the away team scored in the
+        2nd quarter.
+        """
+        return self._away_points_2q
+
+    @int_property_decorator
+    def away_points_3q(self):
+        """
+        Returns an ``int`` of the number of points the away team scored in the
+        3rd quarter.
+        """
+        return self._away_points_3q
+
+    @int_property_decorator
+    def away_points_4q(self):
+        """
+        Returns an ``int`` of the number of points the away team scored in the
+        4th quarter.
+        """
+        return self._away_points_4q
+
+    @int_property_decorator
     def away_points(self):
         """
         Returns an ``int`` of the number of points the away team scored.
@@ -1307,6 +1451,38 @@ class Boxscore:
         return self._home_personal_fouls
 
     @int_property_decorator
+    def home_points_1q(self):
+        """
+        Returns an ``int`` of the number of points the home team scored in the
+        1st quarter.
+        """
+        return self._home_points_1q
+
+    @int_property_decorator
+    def home_points_2q(self):
+        """
+        Returns an ``int`` of the number of points the home team scored in the
+        2nd quarter.
+        """
+        return self._home_points_2q
+
+    @int_property_decorator
+    def home_points_3q(self):
+        """
+        Returns an ``int`` of the number of points the home team scored in the
+        3rd quarter.
+        """
+        return self._home_points_3q
+
+    @int_property_decorator
+    def home_points_4q(self):
+        """
+        Returns an ``int`` of the number of points the home team scored in the
+        4th quarter.
+        """
+        return self._home_points_4q
+
+    @int_property_decorator
     def home_points(self):
         """
         Returns an ``int`` of the number of points the home team scored.
@@ -1440,6 +1616,7 @@ class Boxscores:
         empty, or if 'end_date' is prior to 'date', only the games from the day
         specified in the 'date' parameter will be saved.
     """
+
     def __init__(self, date, end_date=None):
         self._boxscores = {}
 
