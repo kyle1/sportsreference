@@ -232,12 +232,14 @@ class Boxscore:
         self._duration = None
         self._away_name = None
         self._home_name = None
+        self._over_under = None
         self._winner = None
         self._winning_name = None
         self._winning_abbr = None
         self._losing_name = None
         self._losing_abbr = None
         self._summary = None
+        self._away_points_implied = None
         self._away_points = None
         self._away_first_downs = None
         self._away_rush_attempts = None
@@ -262,6 +264,7 @@ class Boxscore:
         self._away_fourth_down_conversions = None
         self._away_fourth_down_attempts = None
         self._away_time_of_possession = None
+        self._home_points_implied = None
         self._home_points = None
         self._home_first_downs = None
         self._home_rush_attempts = None
@@ -427,6 +430,63 @@ class Boxscore:
                 except ValueError:
                     summary[team[ind]].append(None)
         return summary
+
+    def _find_game_info_table(self, boxscore):
+        """
+        Find the table with game information on the page.
+
+        Iterate through all tables on the page and see if any of them are the
+        game info table by checking if the ID matches the expected ID. If so,
+        return it.
+
+        Parameters
+        ----------
+        boxscore : PyQuery object
+            A PyQuery object containing all of the HTML data from the boxscore.
+
+        Returns
+        -------
+        PyQuery object
+            Returns a PyQuery object that represents the game info table.
+        """
+        for table in boxscore('table').items():
+            if table.attr['id'] == 'game_info':
+                return table
+        return
+
+    def _parse_over_under(self, game_info):
+        """
+        Parse the vegas over/under.
+
+        Parameters
+        ----------
+        field : string
+            The name of the attribute to parse.
+        table : PyQuery object
+            A PyQuery object containing all of the HTML data from the game info table.
+
+        Returns
+        -------
+        int
+            An int representing the team's 1st or 2nd half points
+        """
+        # TODO (use NCAA half points or NBA quarter points parsing for reference)
+
+        row_index = 0
+        col_index = 0
+
+        i = 0
+        for row in game_info('tr').items():
+            # Find correct team row
+            if i == row_index:
+                # Find correct column (1st half or 2nd half)
+                j = 0
+                for td in row('td').items():
+                    if j == col_index:
+                        return td.text()
+                    j = j + 1
+            i = i + 1
+        return
 
     def _find_boxscore_tables(self, boxscore):
         """
@@ -660,6 +720,8 @@ class Boxscore:
         if not boxscore:
             return
 
+        game_info_table = self._find_game_info_table(boxscore)
+
         for field in self.__dict__:
             # Remove the '_' from the name
             short_field = str(field)[1:]
@@ -684,6 +746,8 @@ class Boxscore:
                 value = self._parse_summary(boxscore)
                 setattr(self, field, value)
                 continue
+            if short_field == 'over_under':
+                value = self._parse_over_under(boxscore)
             index = 0
             if short_field in BOXSCORE_ELEMENT_INDEX.keys():
                 index = BOXSCORE_ELEMENT_INDEX[short_field]

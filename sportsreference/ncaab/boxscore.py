@@ -406,18 +406,20 @@ class Boxscore:
                 continue
         return
 
-    def _parse_half_points(self, home_or_away, half, table):
+    def _parse_half_points(self, home_or_away, half, line_score):
         """
         Parse each team's 1st or 2nd half points.
-
-        Find the line score table.
 
         Parameters
         ----------
         field : string
             The name of the attribute to parse.
-        boxscore : PyQuery object
-            A PyQuery object containing all of the HTML data from the boxscore.
+        home_or_away : string
+            Which team to parse points for.
+        half : int
+            Which half to parse points for.
+        line_score : PyQuery object
+            A PyQuery object containing all of the HTML data from the line score info.
 
         Returns
         -------
@@ -443,7 +445,7 @@ class Boxscore:
         col_index = half
 
         i = 0
-        for row in table('tr').items():
+        for row in line_score('tr').items():
             # Find correct team row
             if i == row_index:
                 # Find correct column (1st half or 2nd half)
