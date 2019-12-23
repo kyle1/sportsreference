@@ -350,7 +350,14 @@ PLAYER_SCHEME = {
     'average_kickoff_return_yards': 'td[data-stat="kick_ret_yds_per_ret"]',
     'kickoff_return_touchdowns': 'td[data-stat="kick_ret_td"]',
     'average_punt_return_yards': 'td[data-stat="punt_ret_yds_per_ret"]',
-    'punt_return_touchdowns': 'td[data-stat="punt_ret_td"]'
+    'punt_return_touchdowns': 'td[data-stat="punt_ret_td"]',
+    'offensive_snaps': 'td[data-stat="offense"]',
+    'offensive_snaps_pct': 'td[data-stat="off_pct"]',
+    'defensive_snaps': 'td[data-stat="defense"]',
+    'defensive_snaps_pct': 'td[data-stat="def_pct"]',
+    'special_teams_snaps': 'td[data-stat="special_teams"]',
+    'special_teams_snaps_pct': 'td[data-stat="st_pct"]',
+
 }
 
 SEASON_PAGE_URL = 'http://www.pro-football-reference.com/years/%s/'

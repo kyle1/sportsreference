@@ -75,7 +75,8 @@ class BoxscorePlayer(AbstractPlayer):
         page. If the player appears in multiple tables, all of their
         information will appear in one single string concatenated together.
     """
-    def __init__(self, player_id, player_name, player_data):
+
+    def __init__(self, player_id, player_name, game_id, player_data):
         self._index = 0
         self._yards_lost_from_sacks = None
         self._fumbles_lost = None
@@ -84,7 +85,8 @@ class BoxscorePlayer(AbstractPlayer):
         self._tackles_for_loss = None
         self._quarterback_hits = None
         self._average_kickoff_return_yards = None
-        AbstractPlayer.__init__(self, player_id, player_name, player_data)
+        AbstractPlayer.__init__(
+            self, player_id, player_name, game_id, player_data)
 
     @property
     def dataframe(self):
@@ -93,6 +95,9 @@ class BoxscorePlayer(AbstractPlayer):
         properties and values for the specified game.
         """
         fields_to_include = {
+            'player_id': self.player_id,
+            'player_name': self.name,
+            'game_id': self.game_id,
             'completed_passes': self.completed_passes,
             'attempted_passes': self.attempted_passes,
             'passing_yards': self.passing_yards,
@@ -148,7 +153,13 @@ class BoxscorePlayer(AbstractPlayer):
             'punts': self.punts,
             'total_punt_yards': self.total_punt_yards,
             'yards_per_punt': self.yards_per_punt,
-            'longest_punt': self.longest_punt
+            'longest_punt': self.longest_punt,
+            'offensive_snaps': self.offensive_snaps,
+            'offensive_snaps_pct': self.offensive_snaps_pct,
+            'defensive_snaps': self.defensive_snaps,
+            'defensive_snaps_pct': self.defensive_snaps_pct,
+            'special_teams_snaps': self.special_teams_snaps,
+            'special_teams_snaps_pct': self.special_teams_snaps_pct
         }
         return pd.DataFrame([fields_to_include], index=[self._player_id])
 
@@ -223,6 +234,7 @@ class Boxscore:
         The relative link to the boxscore HTML page, such as
         '201802040nwe'.
     """
+
     def __init__(self, uri):
         self._uri = uri
         self._date = None
@@ -449,7 +461,7 @@ class Boxscore:
         """
         tables = []
         valid_tables = ['player_offense', 'player_defense', 'returns',
-                        'kicking']
+                        'kicking', 'home_snap_counts', 'vis_snap_counts']
 
         for table in boxscore('table').items():
             if table.attr['id'] in valid_tables:
@@ -502,7 +514,7 @@ class Boxscore:
         """
         Determine whether the player is on the home or away team.
 
-        Next to every player is their school's name. This name can be matched
+        Next to every player is their team's name. This name can be matched
         with the previously parsed home team's name to determine if the player
         is a member of the home or away team.
 
@@ -553,13 +565,20 @@ class Boxscore:
             player's name, HTML data, and a string constant indicating which
             team the player is a member of.
         """
+        home_or_away = None
+        if table.attr['id'] == "home_snap_counts":
+            home_or_away = HOME
+        elif table.attr['id'] == "vis_snap_counts":
+            home_or_away = AWAY
+
         for row in table('tbody tr').items():
             player_id = self._find_player_id(row)
             # Occurs when a header row is identified instead of a player.
             if not player_id:
                 continue
             name = self._find_player_name(row)
-            home_or_away = self._find_home_or_away(row)
+            if home_or_away == None:
+                home_or_away = self._find_home_or_away(row)
             try:
                 player_dict[player_id]['data'] += str(row).strip()
             except KeyError:
@@ -570,7 +589,7 @@ class Boxscore:
                 }
         return player_dict
 
-    def _instantiate_players(self, player_dict):
+    def _instantiate_players(self, game_id, player_dict):
         """
         Create a list of player instances for both the home and away teams.
 
@@ -599,6 +618,7 @@ class Boxscore:
         for player_id, details in player_dict.items():
             player = BoxscorePlayer(player_id,
                                     details['name'],
+                                    game_id,
                                     details['data'])
             if details['team'] == HOME:
                 home_players.append(player)
@@ -632,7 +652,8 @@ class Boxscore:
         tables = self._find_boxscore_tables(boxscore)
         for table in tables:
             player_dict = self._extract_player_stats(table, player_dict)
-        away_players, home_players = self._instantiate_players(player_dict)
+        away_players, home_players = self._instantiate_players(
+            self._uri, player_dict)
         return away_players, home_players
 
     def _parse_game_data(self, uri):
@@ -1289,6 +1310,7 @@ class Boxscores:
         empty, or if 'end_week' is prior to 'week', only the games from the day
         specified in the 'date' parameter will be saved.
     """
+
     def __init__(self, week, year, end_week=None):
         self._boxscores = {}
 

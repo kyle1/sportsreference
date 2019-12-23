@@ -82,9 +82,11 @@ class AbstractPlayer:
         page. If the player appears in multiple tables, all of their
         information will appear in one single string concatenated together.
     """
-    def __init__(self, player_id, player_name, player_data):
+
+    def __init__(self, player_id, player_name, game_id, player_data):
         self._player_id = player_id
         self._name = player_name
+        self._game_id = game_id
         # Passing-specific stats
         self._completed_passes = None
         self._attempted_passes = None
@@ -140,6 +142,13 @@ class AbstractPlayer:
         self._fumbles_recovered_for_touchdown = None
         self._sacks = None
         self._assists_on_tackles = None
+        # Snap counts
+        self._offensive_snaps = None
+        self._offensive_snaps_pct = None
+        self._defensive_snaps = None
+        self._defensive_snaps_pct = None
+        self._special_teams_snaps = None
+        self._special_teams_snaps_pct = None
 
         self._parse_player_data(player_data)
 
@@ -182,9 +191,11 @@ class AbstractPlayer:
             will be a string representing the player's game statistics in HTML
             format.
         """
+
         for field in self.__dict__:
             short_field = str(field)[1:]
             if short_field == 'player_id' or \
+               short_field == 'game_id' or \
                short_field == 'index' or \
                short_field == 'most_recent_season' or \
                short_field == 'name' or \
@@ -219,6 +230,13 @@ class AbstractPlayer:
         Returns a ``string`` of the player's name, such as 'Drew Brees'.
         """
         return self._name
+
+    @property
+    def game_id(self):
+        """
+        Returns a ``string`` of the game ID (uri) on pro-football-reference.
+        """
+        return self._game_id
 
     @_int_property_decorator
     def completed_passes(self):
@@ -568,3 +586,51 @@ class AbstractPlayer:
         Returns an ``int`` of the number of assist the player made on tackles.
         """
         return self._assists_on_tackles
+
+    @_int_property_decorator
+    def offensive_snaps(self):
+        """
+        Returns an ``int`` of the number of offensive snaps the player was on
+        the field for.
+        """
+        return self._offensive_snaps
+
+    @_float_property_decorator
+    def offensive_snaps_pct(self):
+        """
+        Returns a ``float`` of the percentage of offensive snaps the player was on
+        the field for.
+        """
+        return self._offensive_snaps_pct
+
+    @_int_property_decorator
+    def defensive_snaps(self):
+        """
+        Returns an ``int`` of the number of defensive snaps the player was on
+        the field for.
+        """
+        return self._defensive_snaps
+
+    @_float_property_decorator
+    def defensive_snaps_pct(self):
+        """
+        Returns a ``float`` of the percentage of defensive snaps the player was on
+        the field for.
+        """
+        return self._defensive_snaps_pct
+
+    @_int_property_decorator
+    def special_teams_snaps(self):
+        """
+        Returns an ``int`` of the number of special teams snaps the player was on
+        the field for.
+        """
+        return self._special_teams_snaps
+
+    @_float_property_decorator
+    def special_teams_snaps_pct(self):
+        """
+        Returns a ``float`` of the percentage of special teams snaps the player was on
+        the field for.
+        """
+        return self._special_teams_snaps_pct
