@@ -76,17 +76,18 @@ class BoxscorePlayer(AbstractPlayer):
         information will appear in one single string concatenated together.
     """
 
-    def __init__(self, player_id, player_name, game_id, player_data):
+    def __init__(self, player_id, player_name, game_id, player_data, two_point_conversions):
         self._index = 0
         self._yards_lost_from_sacks = None
         self._fumbles_lost = None
+        self._two_point_conversions = None
         self._combined_tackles = None
         self._solo_tackles = None
         self._tackles_for_loss = None
         self._quarterback_hits = None
         self._average_kickoff_return_yards = None
         AbstractPlayer.__init__(
-            self, player_id, player_name, game_id, player_data)
+            self, player_id, player_name, game_id, player_data, two_point_conversions)
 
     @property
     def dataframe(self):
@@ -118,6 +119,7 @@ class BoxscorePlayer(AbstractPlayer):
             'longest_reception': self.longest_reception,
             'fumbles': self.fumbles,
             'fumbles_lost': self.fumbles_lost,
+            'two_point_conversions': self.two_point_conversions,
             'interceptions': self.interceptions,
             'yards_returned_from_interception':
             self.yards_returned_from_interception,
@@ -178,6 +180,22 @@ class BoxscorePlayer(AbstractPlayer):
         and the opponent recovered the ball.
         """
         return self._fumbles_lost
+
+    @_int_property_decorator
+    def fumbles_lost(self):
+        """
+        Returns an ``int`` of the number of times the player fumbled the ball
+        and the opponent recovered the ball.
+        """
+        return self._fumbles_lost
+
+    # @_int_property_decorator
+    # def two_point_conversions(self):
+    #     """
+    #     Returns an ``int`` of the number of times the player scored a two-point
+    #     conversion.
+    #     """
+    #     return self._two_point_conversions
 
     @_int_property_decorator
     def combined_tackles(self):
@@ -461,12 +479,37 @@ class Boxscore:
         """
         tables = []
         valid_tables = ['player_offense', 'player_defense', 'returns',
-                        'kicking', 'home_snap_counts', 'vis_snap_counts']
+                        'kicking', 'home_snap_counts', 'vis_snap_counts',
+                        'pbp']
 
         for table in boxscore('table').items():
             if table.attr['id'] in valid_tables:
                 tables.append(table)
         return tables
+
+    def _find_pbp_table(self, boxscore):
+        """
+        Find the table with play-by-play information on the page.
+
+        Iterate through all tables on the page and see if any of them are
+        the play-by-play table by checking if the ID matches the expected
+        ID. If so, return the table.
+
+        Parameters
+        ----------
+        boxscore : PyQuery object
+            A PyQuery object containing all of the HTML data from the boxscore.
+
+        Returns
+        -------
+        PyQuery object
+            Returns the PyQuery objects that represents the play-by-play table.
+        """
+
+        for table in boxscore('table').items():
+            if table.attr['id'] == 'pbp':
+                return table
+        return
 
     def _find_player_id(self, row):
         """
@@ -585,8 +628,48 @@ class Boxscore:
                 player_dict[player_id] = {
                     'name': name,
                     'data': str(row).strip(),
+                    'two_point_conversions': 0,
                     'team': home_or_away
                 }
+        return player_dict
+
+    def _extract_two_point_conversions(self, table, player_dict):
+        """
+        Extract two point conversion data from the play-by-play table
+
+        Parameters
+        ----------
+        table : PyQuery object
+            A PyQuery object of the play-by-play table.
+
+        Returns
+        -------
+        dictionary
+            Returns a ``dictionary`` where each key is a string of the player's
+            ID and each value is the number of two-point conversions the player
+            had.
+        """
+
+        for row in table('tbody tr').items():
+            #player_id = self._find_player_id(row)
+            # Occurs when a header row is identified instead of a player.
+            if 'Two Point' and 'succeeds' in row('td').text():
+                for a in row('a').items():
+                    if 'href' in a[0].attrib and 'player' in a[0].attrib['href']:
+                        href = a[0].attrib['href'].split('/')
+                        player_id = href[len(href)-1].split('.')[0]
+                        #player_name = a.text()
+                        # print(player_name)
+                        # print(player_id)
+                        # try:
+                        player_dict[player_id]['two_point_conversions'] += 1
+                        # except KeyError:
+                        #     player_dict[player_id] = {
+                        #         'name': name,
+                        #         'data': str(row).strip(),
+                        #         'team': home_or_away
+                        #     }
+
         return player_dict
 
     def _instantiate_players(self, game_id, player_dict):
@@ -619,7 +702,8 @@ class Boxscore:
             player = BoxscorePlayer(player_id,
                                     details['name'],
                                     game_id,
-                                    details['data'])
+                                    details['data'],
+                                    details['two_point_conversions'])
             if details['team'] == HOME:
                 home_players.append(player)
             else:
@@ -652,6 +736,11 @@ class Boxscore:
         tables = self._find_boxscore_tables(boxscore)
         for table in tables:
             player_dict = self._extract_player_stats(table, player_dict)
+
+        pbp_table = self._find_pbp_table(boxscore)
+        player_dict = self._extract_two_point_conversions(
+            pbp_table, player_dict)
+
         away_players, home_players = self._instantiate_players(
             self._uri, player_dict)
         return away_players, home_players

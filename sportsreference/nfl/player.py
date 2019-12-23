@@ -83,7 +83,7 @@ class AbstractPlayer:
         information will appear in one single string concatenated together.
     """
 
-    def __init__(self, player_id, player_name, game_id, player_data):
+    def __init__(self, player_id, player_name, game_id, player_data, two_point_conversions):
         self._player_id = player_id
         self._name = player_name
         self._game_id = game_id
@@ -110,6 +110,8 @@ class AbstractPlayer:
         self._longest_reception = None
         # Combined receiving and rushing stats
         self._fumbles = None
+        # 2-Pt conversions
+        self._two_point_conversions = two_point_conversions
         # Punt/Kick return stats
         self._punt_returns = None
         self._punt_return_yards = None
@@ -196,6 +198,7 @@ class AbstractPlayer:
             short_field = str(field)[1:]
             if short_field == 'player_id' or \
                short_field == 'game_id' or \
+               short_field == 'two_point_conversions' or \
                short_field == 'index' or \
                short_field == 'most_recent_season' or \
                short_field == 'name' or \
@@ -237,6 +240,14 @@ class AbstractPlayer:
         Returns a ``string`` of the game ID (uri) on pro-football-reference.
         """
         return self._game_id
+
+    @property
+    def two_point_conversions(self):
+        """
+        Returns an ``int`` of the number of times the player scored a two-point
+        conversion.
+        """
+        return self._two_point_conversions
 
     @_int_property_decorator
     def completed_passes(self):
