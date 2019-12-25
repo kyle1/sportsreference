@@ -509,7 +509,7 @@ class Boxscore:
         for table in boxscore('table').items():
             if table.attr['id'] == 'pbp':
                 return table
-        return
+        return None
 
     def _find_player_id(self, row):
         """
@@ -734,10 +734,19 @@ class Boxscore:
         player_dict = {}
 
         tables = self._find_boxscore_tables(boxscore)
+
+        if len(tables) == 0:
+            print('Unable to find boxscore tables')
+            return
+
         for table in tables:
             player_dict = self._extract_player_stats(table, player_dict)
 
         pbp_table = self._find_pbp_table(boxscore)
+        if not pbp_table:
+            print('Unable to find play-by-play table')
+            return
+
         player_dict = self._extract_two_point_conversions(
             pbp_table, player_dict)
 

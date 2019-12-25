@@ -17,3 +17,6 @@ lib/*
 man/*
 pip-selfcheck.json
 env/*
+
+# Misc
+csv

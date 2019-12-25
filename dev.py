@@ -1,23 +1,20 @@
+import os
 import pandas as pd
 import time
 from sportsreference.nfl.schedule import Schedule as NflSchedule
-from sportsreference.nfl.boxscore import Boxscore as NflBoxscore
+from sportsreference.nfl.boxscore import Boxscore as NflBoxscore, Boxscores as NflBoxscores
 
-# box = Boxscore('201912210nwe')
-# print(box.dataframe)
+TEAM_ABBREVS = [
+    'NWE', 'BUF', 'NYJ', 'MIA',
+    'RAV', 'PIT', 'CLE', 'CIN',
+    'HTX', 'OTI', 'CLT', 'JAX',
+    'KAN', 'RAI', 'SDG', 'DEN',
+    'PHI', 'DAL', 'WAS', 'NYG',
+    'GNB', 'MIN', 'CHI', 'DET',
+    'NOR', 'TAM', 'ATL', 'CAR',
+    'SFO', 'SEA', 'RAM', 'CRD'
+]
 
-
-# TEAM_ABBREVS = [
-#     'NWE', 'BUF', 'NYJ', 'MIA',
-#     'RAV', 'PIT', 'CLE', 'CIN',
-#     'HTX', 'OTI', 'CLT', 'JAX',
-#     'KAN', 'RAI', 'SDG', 'DEN',
-#     'PHI', 'DAL', 'WAS', 'NYG',
-#     'GNB', 'MIN', 'CHI', 'DET',
-#     'NOR', 'TAM', 'ATL', 'CAR',
-#     'SFO', 'SEA', 'RAM', 'CRD'
-# ]
-TEAM_ABBREVS = ['NWE']
 
 uri_list = []
 game_df_list = []
@@ -50,14 +47,23 @@ def get_boxscores_by_uri(uri):
     return player_boxscores_dataframe
 
 
-week = 16
-games_dataframe = get_games_by_week(week)
-games_dataframe.to_csv('games_week_' + str(week) + '.csv', index=False)
+season = '2019'
+weeks = ['01', '02', '03', '04', '05', '06', '07', '08',
+         '09', '10', '11', '12', '13', '14', '15', '16']
 
+for week in weeks:
+    outdir = 'csv/nfl/' + season + '/week' + str(week)
+    if not os.path.exists(outdir):
+        os.mkdir(outdir)
 
-uri_list = games_dataframe['boxscore_index'].tolist()
-for uri in uri_list:
-    player_boxscores_dataframe = get_boxscores_by_uri(uri)
-    player_boxscores_dataframe.to_csv(
-        'player_boxscores_' + uri + '.csv', index=False)
-    time.sleep(5)
+    games_dataframe = get_games_by_week(int(week))
+    games_dataframe.to_csv(outdir + '/games_week_' +
+                           str(week) + '.csv', index=False)
+
+    uri_list = games_dataframe['boxscore_index'].tolist()
+    uri_list = list(set(uri_list))  # Get unique values
+    for uri in uri_list:
+        player_boxscores_dataframe = get_boxscores_by_uri(uri)
+        player_boxscores_dataframe.to_csv(
+            outdir + '/player_boxscores_' + uri + '.csv', index=False)
+        time.sleep(5)
