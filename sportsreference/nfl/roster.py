@@ -76,6 +76,7 @@ class Player(AbstractPlayer):
         is a number starting at '00' for the first time that player ID has been
         used and increments by 1 for every successive player.
     """
+
     def __init__(self, player_id):
         self._most_recent_season = ''
         self._index = None
@@ -201,7 +202,8 @@ class Player(AbstractPlayer):
         if not player_data:
             return
         self._find_initial_index()
-        AbstractPlayer.__init__(self, player_id, self._name, player_data)
+        AbstractPlayer.__init__(
+            self, player_id, self._name, player_data, None, None)
 
     def _build_url(self):
         """
@@ -1490,6 +1492,7 @@ class Roster:
         respective stats which greatly reduces the time to return a response if
         just the names and IDs are desired. Defaults to False.
     """
+
     def __init__(self, team, year=None, slim=False):
         self._team = team
         self._slim = slim

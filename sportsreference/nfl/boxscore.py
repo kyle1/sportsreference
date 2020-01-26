@@ -76,7 +76,7 @@ class BoxscorePlayer(AbstractPlayer):
         information will appear in one single string concatenated together.
     """
 
-    def __init__(self, player_id, player_name, game_id, player_data, two_point_conversions):
+    def __init__(self, player_id, player_name, player_data,  game_id, two_point_conversions):
         self._index = 0
         self._yards_lost_from_sacks = None
         self._fumbles_lost = None
@@ -87,7 +87,7 @@ class BoxscorePlayer(AbstractPlayer):
         self._quarterback_hits = None
         self._average_kickoff_return_yards = None
         AbstractPlayer.__init__(
-            self, player_id, player_name, game_id, player_data, two_point_conversions)
+            self, player_id, player_name, player_data, game_id, two_point_conversions)
 
     @property
     def dataframe(self):
@@ -701,8 +701,8 @@ class Boxscore:
         for player_id, details in player_dict.items():
             player = BoxscorePlayer(player_id,
                                     details['name'],
-                                    game_id,
                                     details['data'],
+                                    game_id,
                                     details['two_point_conversions'])
             if details['team'] == HOME:
                 home_players.append(player)

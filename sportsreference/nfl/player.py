@@ -83,7 +83,7 @@ class AbstractPlayer:
         information will appear in one single string concatenated together.
     """
 
-    def __init__(self, player_id, player_name, game_id, player_data, two_point_conversions):
+    def __init__(self, player_id, player_name, player_data, game_id, two_point_conversions):
         self._player_id = player_id
         self._name = player_name
         self._game_id = game_id
